@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Haunt House: Dead Rounds</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="gameShell" aria-label="Haunt House: Dead Rounds game">
+      <canvas id="gameCanvas"></canvas>
+
+      <section id="hud" aria-live="polite">
+        <div class="hud-stack">
+          <div class="meter health">
+            <span id="healthText">Health 100</span>
+            <div><i id="healthFill"></i></div>
+          </div>
+          <div class="meter ammo">
+            <span id="ammoText">Pistol 12/12</span>
+            <div><i id="reloadFill"></i></div>
+          </div>
+        </div>
+
+        <div class="hud-center">
+          <b id="roundText">Round 1</b>
+          <span id="messageText">Survive the house.</span>
+        </div>
+
+        <div class="hud-stack right">
+          <span id="pointsText">Points 0</span>
+          <span id="zombieText">Zombies 0</span>
+          <span id="shopHint">Weapon shop nearby</span>
+        </div>
+      </section>
+
+      <div id="crosshair" aria-hidden="true"></div>
+      <div id="damageVignette" aria-hidden="true"></div>
+
+      <section id="menuOverlay" class="overlay active">
+        <div class="panel hero-panel">
+          <p class="eyebrow">Haunted FPS Survival</p>
+          <h1>Haunt House: Dead Rounds</h1>
+          <p class="lede">Hold the mansion, earn points, buy better weapons, and keep the dead at a distance.</p>
+          <button id="startButton" type="button">Start Run</button>
+        </div>
+      </section>
+
+      <section id="shopOverlay" class="overlay">
+        <div class="panel shop-panel">
+          <header>
+            <div>
+              <p class="eyebrow">Weapon Shop</p>
+              <h2>Spend Points</h2>
+            </div>
+            <button id="closeShopButton" class="ghost" type="button">Close</button>
+          </header>
+          <div id="weaponList" class="weapon-list"></div>
+        </div>
+      </section>
+
+      <section id="gameOverOverlay" class="overlay">
+        <div class="panel">
+          <p class="eyebrow">Run Ended</p>
+          <h2 id="gameOverTitle">The house took you.</h2>
+          <p id="gameOverStats" class="lede"></p>
+          <button id="restartButton" type="button">Try Again</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,352 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --paper: #e8dfc9;
+  --ink: #15100d;
+  --blood: #b83232;
+  --amber: #d49a32;
+  --moss: #576a45;
+  --steel: #8fa1a8;
+  --panel: rgba(15, 14, 13, 0.78);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #070706;
+}
+
+button {
+  min-height: 44px;
+  border: 1px solid rgba(232, 223, 201, 0.22);
+  border-radius: 6px;
+  padding: 0 18px;
+  color: var(--paper);
+  background: linear-gradient(180deg, #9e2b2b, #661c20);
+  font: 800 0.94rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.48;
+  filter: grayscale(0.3);
+}
+
+button.ghost {
+  background: rgba(232, 223, 201, 0.08);
+  box-shadow: none;
+}
+
+#gameShell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #050505;
+}
+
+#gameCanvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#hud {
+  position: fixed;
+  z-index: 5;
+  inset: 18px 18px auto;
+  display: grid;
+  grid-template-columns: minmax(170px, 260px) minmax(180px, 1fr) minmax(150px, 220px);
+  align-items: start;
+  gap: 14px;
+  color: var(--paper);
+  pointer-events: none;
+  text-shadow: 0 2px 8px #000;
+}
+
+.hud-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.hud-stack.right {
+  justify-items: end;
+  font-weight: 800;
+}
+
+.hud-stack.right span,
+.hud-center,
+.meter {
+  border: 1px solid rgba(232, 223, 201, 0.15);
+  border-radius: 6px;
+  background: rgba(8, 7, 6, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.hud-stack.right span {
+  min-width: 142px;
+  padding: 9px 10px;
+  text-align: right;
+}
+
+.hud-center {
+  justify-self: center;
+  display: grid;
+  min-width: min(420px, 100%);
+  gap: 3px;
+  padding: 10px 16px;
+  text-align: center;
+}
+
+.hud-center b {
+  font-size: clamp(1rem, 2.1vw, 1.38rem);
+}
+
+.hud-center span {
+  font-size: 0.88rem;
+  color: rgba(232, 223, 201, 0.82);
+}
+
+.meter {
+  display: grid;
+  gap: 7px;
+  padding: 9px 10px 10px;
+  font-weight: 800;
+}
+
+.meter div {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(232, 223, 201, 0.16);
+}
+
+.meter i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 120ms linear;
+}
+
+.meter.health i {
+  background: linear-gradient(90deg, #bf3035, #db8c38);
+}
+
+.meter.ammo i {
+  background: linear-gradient(90deg, var(--steel), var(--amber));
+}
+
+#shopHint {
+  display: none;
+  color: #f1c46d;
+}
+
+#shopHint.visible {
+  display: inline-block;
+}
+
+#crosshair {
+  position: fixed;
+  z-index: 4;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+#crosshair::before,
+#crosshair::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 999px;
+  background: rgba(232, 223, 201, 0.88);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+  transform: translate(-50%, -50%);
+}
+
+#crosshair::before {
+  width: 2px;
+  height: 24px;
+}
+
+#crosshair::after {
+  width: 24px;
+  height: 2px;
+}
+
+#damageVignette {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle, transparent 42%, rgba(157, 12, 19, 0.38) 74%),
+    rgba(167, 17, 25, 0.08);
+  transition: opacity 150ms linear;
+}
+
+#damageVignette.active {
+  opacity: 1;
+}
+
+.overlay {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  color: var(--paper);
+  background:
+    linear-gradient(180deg, rgba(4, 4, 4, 0.24), rgba(4, 4, 4, 0.7)),
+    radial-gradient(circle at 50% 42%, rgba(90, 23, 23, 0.34), transparent 50%);
+}
+
+.overlay.active {
+  display: grid;
+}
+
+.panel {
+  width: min(520px, calc(100vw - 32px));
+  border: 1px solid rgba(232, 223, 201, 0.18);
+  border-radius: 8px;
+  padding: clamp(22px, 4vw, 34px);
+  background: var(--panel);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(14px);
+}
+
+.hero-panel {
+  margin-top: 14vh;
+  justify-self: center;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #d5a95f;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+h2 {
+  margin: 0;
+  color: #fbf2de;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+h1 {
+  max-width: 9em;
+  font-size: clamp(2.8rem, 8vw, 5.8rem);
+}
+
+h2 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.lede {
+  max-width: 36rem;
+  margin: 16px 0 22px;
+  color: rgba(232, 223, 201, 0.82);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.shop-panel {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(82vh, 780px);
+  overflow: auto;
+}
+
+.shop-panel header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.weapon-list {
+  display: grid;
+  gap: 10px;
+}
+
+.weapon-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(232, 223, 201, 0.13);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(232, 223, 201, 0.07);
+}
+
+.weapon-row h3 {
+  margin: 0 0 7px;
+  color: #fbf2de;
+  font-size: 1rem;
+}
+
+.weapon-row p {
+  margin: 0;
+  color: rgba(232, 223, 201, 0.72);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.weapon-row.current {
+  border-color: rgba(212, 154, 50, 0.76);
+  background: rgba(212, 154, 50, 0.12);
+}
+
+@media (max-width: 760px) {
+  #hud {
+    inset: 10px 10px auto;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hud-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .hud-stack.right span {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .weapon-row {
+    grid-template-columns: 1fr;
+  }
+
+  .weapon-row button {
+    width: 100%;
+  }
+}
