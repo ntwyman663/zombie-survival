@@ -10,7 +10,7 @@ A vanilla JavaScript haunted-house zombie FPS prototype rendered on a 2D canvas.
 - Multiple zombie types: walker, runner, brute, and stalker.
 - Pistol, shotgun, SMG, rifle, hand cannon, and rocket launcher.
 - Rocket projectiles with splash explosions.
-- Points, weapon shop, magazine/reserve ammo, reloads, health, minimap, and game-over flow.
+- Points, weapon shop with nearby `E` prompt, locked weapon thumbnails, magazine/reserve ammo, reloads, health, minimap, and game-over flow.
 - Zombie ammo drops that refill reserve ammo for the equipped weapon.
 - Pointer lock mouse look with keyboard fallback.
 - Procedural sound effects and bit-style background music through Web Audio.

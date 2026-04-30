@@ -10,7 +10,7 @@ The game currently includes:
 - A generated haunted-house map with a shop area.
 - Round-based zombie spawning and scaling.
 - Zombie A* pathfinding, doorway navigation, crowding, and multiple zombie types.
-- Weapon buying/equipping, reloads, magazine/reserve ammo, ammo drops, points, and HUD state.
+- Weapon buying/equipping, shop proximity prompt, locked weapon thumbnails, reloads, magazine/reserve ammo, ammo drops, points, and HUD state.
 - Hitscan weapons plus a rocket launcher with projectile and splash explosion behavior.
 - Pointer lock mouse look with keyboard fallback.
 - Procedural Web Audio sound effects and background chiptune music.
@@ -67,7 +67,8 @@ After gameplay, rendering, input, or module changes, verify in a browser through
 - SMG hold-to-fire works while single-shot weapons still click once.
 - Rocket projectile impacts walls/zombies and applies splash damage.
 - Ammo pickups add reserve ammo and reload consumes reserve ammo.
-- Shop opens near the shop area, closes, buys, and equips weapons.
+- Shop proximity prompt appears near the crosshair; shop opens near the shop area, closes, buys, and equips weapons.
+- Unowned shop weapon thumbnails stay dimmed/locked, and owned thumbnails show the pixel weapon art.
 - HUD health, ammo/reload, points, zombies, messages, and round state update.
 - Player-forward minimap, weapon view, sprites, damage vignette, and game-over overlay render.
 - Pixel-art weapon and zombie sheets load; canvas fallbacks remain usable if an asset fails.

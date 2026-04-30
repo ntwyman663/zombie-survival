@@ -153,12 +153,27 @@ button.ghost {
 }
 
 #shopHint {
+  position: fixed;
+  z-index: 5;
+  left: 50%;
+  top: calc(50% + 44px);
+  transform: translateX(-50%);
   display: none;
-  color: #f1c46d;
+  min-width: 190px;
+  border: 1px solid rgba(241, 196, 109, 0.62);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #ffd57a;
+  background: rgba(35, 23, 12, 0.78);
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 2px 8px #000;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
 }
 
 #shopHint.visible {
-  display: inline-block;
+  display: block;
 }
 
 #crosshair {
@@ -318,91 +333,46 @@ h2 {
     rgba(7, 7, 6, 0.36);
 }
 
-.weapon-thumb {
-  background-image: url("assets/weapons/weapon-sheet.png");
-  background-size: 300% 200%;
-  background-position: 0 0;
+.weapon-thumb canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
   image-rendering: pixelated;
 }
 
-.weapon-thumb.shotgun {
-  background-position: 50% 0;
+.weapon-thumb.locked canvas {
+  opacity: 0.18;
+  filter: grayscale(1) contrast(0.55) brightness(0.45);
 }
 
-.weapon-thumb.smg {
-  background-position: 100% 0;
-}
-
-.weapon-thumb.rifle {
-  background-position: 0 100%;
-}
-
-.weapon-thumb.cannon {
-  background-position: 50% 100%;
-}
-
-.weapon-thumb.rocket {
-  background-position: 100% 100%;
-}
-
-.weapon-thumb::before,
-.weapon-thumb::after {
+.weapon-thumb.locked::before,
+.weapon-thumb.locked::after {
   content: "";
   position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.weapon-thumb.locked::before {
+  left: calc(50% - 9px);
+  top: calc(50% - 13px);
+  width: 13px;
+  height: 11px;
+  border: 3px solid rgba(251, 242, 222, 0.9);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+}
+
+.weapon-thumb.locked::after {
+  left: calc(50% - 11px);
+  top: calc(50% - 2px);
+  width: 22px;
+  height: 17px;
   border-radius: 4px;
-}
-
-.weapon-thumb::before {
-  left: 16px;
-  top: 22px;
-  width: 62px;
-  height: 12px;
-  background: #2d3030;
-  box-shadow: 16px -10px 0 -3px #4d5250;
-}
-
-.weapon-thumb::after {
-  left: 26px;
-  top: 31px;
-  width: 17px;
-  height: 21px;
-  background: #7b5036;
-  transform: skew(-12deg);
-}
-
-.weapon-thumb.shotgun::before,
-.weapon-thumb.rifle::before,
-.weapon-thumb.rocket::before {
-  left: 5px;
-  width: 84px;
-}
-
-.weapon-thumb.smg::after {
-  left: 43px;
-  height: 25px;
-  background: #b1843a;
-}
-
-.weapon-thumb.cannon::before {
-  width: 72px;
-  height: 18px;
-  border-radius: 8px;
-}
-
-.weapon-thumb.rocket::before {
-  height: 18px;
-  background: #4b4f48;
-  box-shadow: 58px -1px 0 -4px #b98b3c;
-}
-
-.weapon-thumb.rocket::after {
-  left: 8px;
-  top: 18px;
-  width: 18px;
-  height: 20px;
-  border-radius: 50%;
-  background: #232726;
-  transform: none;
+  background:
+    linear-gradient(90deg, transparent 44%, rgba(44, 30, 20, 0.72) 44% 56%, transparent 56%),
+    linear-gradient(180deg, rgba(251, 242, 222, 0.96), rgba(176, 132, 64, 0.96));
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 }
 
 .weapon-row h3 {
