@@ -51,6 +51,7 @@ http://localhost:8000
 - `src/input.js`: Keyboard, mouse, pointer lock, and button wiring.
 - `src/simulation.js`: Rounds, player movement, weapons, zombies, particles, and game state transitions.
 - `src/renderer.js`: World, sprite, weapon, minimap, and screen-effect rendering.
+- `assets/`: Pixel-art weapon, environment, and zombie sheets used by the renderer.
 
 ## Near-Term Roadmap
 

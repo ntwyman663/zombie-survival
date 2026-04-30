@@ -322,6 +322,7 @@ h2 {
   background-image: url("assets/weapons/weapon-sheet.png");
   background-size: 300% 200%;
   background-position: 0 0;
+  image-rendering: pixelated;
 }
 
 .weapon-thumb.shotgun {

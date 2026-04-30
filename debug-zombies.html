@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zombie Crop Debug</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        background: #15120f;
+        color: #f0e4ca;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.4rem;
+      }
+
+      p {
+        max-width: 980px;
+        margin: 0 0 14px;
+        color: rgba(240, 228, 202, 0.76);
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      label {
+        font-weight: 800;
+      }
+
+      select,
+      button {
+        min-height: 38px;
+        border: 1px solid rgba(240, 228, 202, 0.2);
+        border-radius: 6px;
+        padding: 0 10px;
+        color: #f0e4ca;
+        background: #241d18;
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+        gap: 16px;
+        align-items: start;
+      }
+
+      .panel {
+        border: 1px solid rgba(240, 228, 202, 0.16);
+        border-radius: 8px;
+        padding: 12px;
+        background: #211b16;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid rgba(240, 228, 202, 0.14);
+        background:
+          linear-gradient(45deg, #2b2520 25%, transparent 25%),
+          linear-gradient(-45deg, #2b2520 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #2b2520 75%),
+          linear-gradient(-45deg, transparent 75%, #2b2520 75%),
+          #161310;
+        background-position:
+          0 0,
+          0 8px,
+          8px -8px,
+          -8px 0;
+        background-size: 16px 16px;
+        image-rendering: pixelated;
+      }
+
+      #sheetCanvas {
+        cursor: crosshair;
+        touch-action: none;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 210px;
+        margin-top: 12px;
+        border: 1px solid rgba(240, 228, 202, 0.18);
+        border-radius: 6px;
+        padding: 10px;
+        color: #f0e4ca;
+        background: #12100e;
+        font: 0.82rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      code {
+        display: block;
+        margin: 10px 0;
+        color: #d6aa60;
+        font-size: 0.84rem;
+      }
+
+      @media (max-width: 860px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Zombie Crop Debug</h1>
+    <p>
+      Drag one box around a zombie on the full PNG. Choose the zombie name first, then drag the crop.
+      Send me the generated values by name.
+    </p>
+    <p>
+      Zombie names: <strong>walker</strong> is the normal zombie, <strong>runner</strong> is the skinny fast zombie,
+      <strong>brute</strong> is the big tank zombie, and <strong>stalker</strong> is the later purple/green special.
+    </p>
+
+    <div class="toolbar">
+      <label for="typeSelect">Editing</label>
+      <select id="typeSelect">
+        <option value="walker">walker - normal zombie</option>
+        <option value="runner">runner - skinny fast zombie</option>
+        <option value="brute">brute - big tank zombie</option>
+        <option value="stalker">stalker - purple/green special</option>
+      </select>
+      <button id="clearButton" type="button">Clear Current Box</button>
+    </div>
+
+    <div class="layout">
+      <section class="panel">
+        <canvas id="sheetCanvas" width="1000" height="400"></canvas>
+        <code id="currentValue"></code>
+      </section>
+
+      <aside class="panel">
+        <h2>Selected Crop Preview</h2>
+        <canvas id="previewCanvas" width="260" height="360"></canvas>
+        <textarea id="output" spellcheck="false" aria-label="Generated crop config"></textarea>
+      </aside>
+    </div>
+
+    <script type="module">
+      const typeLabels = {
+        walker: "normal zombie",
+        runner: "skinny fast zombie",
+        brute: "big tank zombie",
+        stalker: "purple/green special",
+      };
+
+      const rects = {
+        walker: null,
+        runner: null,
+        brute: null,
+        stalker: null,
+      };
+
+      const image = new Image();
+      image.src = "assets/zombies/zombie-sheet.png";
+
+      const sheetCanvas = document.getElementById("sheetCanvas");
+      const previewCanvas = document.getElementById("previewCanvas");
+      const typeSelect = document.getElementById("typeSelect");
+      const output = document.getElementById("output");
+      const currentValue = document.getElementById("currentValue");
+      const clearButton = document.getElementById("clearButton");
+      const sheetCtx = sheetCanvas.getContext("2d");
+      const previewCtx = previewCanvas.getContext("2d");
+      sheetCtx.imageSmoothingEnabled = false;
+      previewCtx.imageSmoothingEnabled = false;
+
+      let scale = 1;
+      let dragging = false;
+      let start = null;
+
+      image.addEventListener("load", () => {
+        scale = Math.min(1, 1000 / image.naturalWidth);
+        sheetCanvas.width = Math.round(image.naturalWidth * scale);
+        sheetCanvas.height = Math.round(image.naturalHeight * scale);
+        drawAll();
+      });
+
+      function activeType() {
+        return typeSelect.value;
+      }
+
+      function screenToImage(event) {
+        const bounds = sheetCanvas.getBoundingClientRect();
+        return {
+          x: Math.max(0, Math.min(image.naturalWidth, ((event.clientX - bounds.left) / bounds.width) * image.naturalWidth)),
+          y: Math.max(0, Math.min(image.naturalHeight, ((event.clientY - bounds.top) / bounds.height) * image.naturalHeight)),
+        };
+      }
+
+      function drawAll() {
+        sheetCtx.clearRect(0, 0, sheetCanvas.width, sheetCanvas.height);
+        sheetCtx.drawImage(image, 0, 0, sheetCanvas.width, sheetCanvas.height);
+
+        Object.entries(rects).forEach(([type, rect]) => {
+          if (!rect) return;
+          const selected = type === activeType();
+          sheetCtx.strokeStyle = selected ? "#f5c15c" : "rgba(245, 193, 92, 0.62)";
+          sheetCtx.lineWidth = selected ? 4 : 2;
+          sheetCtx.strokeRect(rect.x * scale, rect.y * scale, rect.w * scale, rect.h * scale);
+          sheetCtx.fillStyle = selected ? "#f5c15c" : "rgba(245, 193, 92, 0.72)";
+          sheetCtx.font = "800 16px Inter, sans-serif";
+          sheetCtx.fillText(type, rect.x * scale + 8, Math.max(20, rect.y * scale - 8));
+        });
+
+        drawPreview();
+        updateOutput();
+      }
+
+      function drawPreview() {
+        previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        const rect = rects[activeType()];
+        if (!rect) {
+          currentValue.textContent = `${activeType()}: no crop selected`;
+          return;
+        }
+
+        previewCtx.drawImage(image, rect.x, rect.y, rect.w, rect.h, 12, 12, previewCanvas.width - 24, previewCanvas.height - 24);
+        currentValue.textContent = `${activeType()} (${typeLabels[activeType()]}): x=${Math.round(rect.x)}, y=${Math.round(rect.y)}, w=${Math.round(rect.w)}, h=${Math.round(rect.h)}`;
+      }
+
+      function updateOutput() {
+        output.value = Object.entries(rects)
+          .map(([type, rect]) => {
+            if (!rect) return `${type}: not selected`;
+            return `${type}: x=${Math.round(rect.x)}, y=${Math.round(rect.y)}, w=${Math.round(rect.w)}, h=${Math.round(rect.h)}`;
+          })
+          .join("\n");
+      }
+
+      sheetCanvas.addEventListener("pointerdown", (event) => {
+        dragging = true;
+        sheetCanvas.setPointerCapture(event.pointerId);
+        start = screenToImage(event);
+      });
+
+      sheetCanvas.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        const pos = screenToImage(event);
+        const left = Math.min(start.x, pos.x);
+        const top = Math.min(start.y, pos.y);
+        const right = Math.max(start.x, pos.x);
+        const bottom = Math.max(start.y, pos.y);
+        rects[activeType()] = {
+          x: left,
+          y: top,
+          w: Math.max(1, right - left),
+          h: Math.max(1, bottom - top),
+        };
+        drawAll();
+      });
+
+      sheetCanvas.addEventListener("pointerup", () => {
+        dragging = false;
+      });
+
+      typeSelect.addEventListener("change", drawAll);
+      clearButton.addEventListener("click", () => {
+        rects[activeType()] = null;
+        drawAll();
+      });
+    </script>
+  </body>
+</html>

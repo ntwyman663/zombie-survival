@@ -14,7 +14,12 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
   let view = { w: 1, h: 1, dpr: 1 };
   const weaponSheet = new Image();
   let weaponSheetCanvas = null;
+  const textureSheet = new Image();
+  const zombieSheet = new Image();
+  let zombieSheetCanvas = null;
   weaponSheet.src = "assets/weapons/weapon-sheet.png";
+  textureSheet.src = "assets/textures/doom-textures.png";
+  zombieSheet.src = "assets/zombies/zombie-sheet.png";
   weaponSheet.addEventListener("load", () => {
     weaponSheetCanvas = document.createElement("canvas");
     weaponSheetCanvas.width = weaponSheet.naturalWidth;
@@ -26,10 +31,30 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
       const r = imageData.data[i];
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
-      if (g > 170 && r < 95 && b < 95) imageData.data[i + 3] = 0;
+      if (g > 135 && g > r * 1.35 && g > b * 1.35) imageData.data[i + 3] = 0;
     }
     sheetCtx.putImageData(imageData, 0, 0);
   });
+  zombieSheet.addEventListener("load", () => {
+    zombieSheetCanvas = chromaKeyImage(zombieSheet);
+  });
+
+  function chromaKeyImage(image) {
+    const keyed = document.createElement("canvas");
+    keyed.width = image.naturalWidth;
+    keyed.height = image.naturalHeight;
+    const keyedCtx = keyed.getContext("2d");
+    keyedCtx.drawImage(image, 0, 0);
+    const imageData = keyedCtx.getImageData(0, 0, keyed.width, keyed.height);
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const r = imageData.data[i];
+      const g = imageData.data[i + 1];
+      const b = imageData.data[i + 2];
+      if (g > 165 && r < 110 && b < 110) imageData.data[i + 3] = 0;
+    }
+    keyedCtx.putImageData(imageData, 0, 0);
+    return keyed;
+  }
 
   function resizeCanvas() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -54,29 +79,32 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
 
   function renderWorld(depths) {
     const { w, h } = view;
+    ctx.imageSmoothingEnabled = false;
     const horizon = h * 0.5 + Math.sin(game.player.bob) * game.state.screenKick * h * 0.01;
 
     const ceiling = ctx.createLinearGradient(0, 0, 0, horizon);
-    ceiling.addColorStop(0, "#1f1c18");
-    ceiling.addColorStop(1, "#4b4135");
+    ceiling.addColorStop(0, "#161412");
+    ceiling.addColorStop(1, "#2f2a24");
     ctx.fillStyle = ceiling;
     ctx.fillRect(0, 0, w, horizon);
 
     const floor = ctx.createLinearGradient(0, horizon, 0, h);
-    floor.addColorStop(0, "#5a4837");
-    floor.addColorStop(1, "#211b17");
+    floor.addColorStop(0, "#403529");
+    floor.addColorStop(1, "#181411");
     ctx.fillStyle = floor;
     ctx.fillRect(0, horizon, w, h - horizon);
 
-    ctx.globalAlpha = 0.24;
-    ctx.strokeStyle = "#e0b66b";
-    ctx.lineWidth = Math.max(1, view.dpr);
-    for (let i = 0; i < 9; i += 1) {
-      const y = horizon + (i / 9) * (h - horizon);
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y + Math.sin(i + game.state.gameTime) * 4 * view.dpr);
-      ctx.stroke();
+    if (horizon < h) {
+      ctx.globalAlpha = 0.24;
+      ctx.strokeStyle = "#e0b66b";
+      ctx.lineWidth = Math.max(1, view.dpr);
+      for (let i = 0; i < 9; i += 1) {
+        const y = horizon + (i / 9) * (h - horizon);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y + Math.sin(i + game.state.gameTime) * 4 * view.dpr);
+        ctx.stroke();
+      }
     }
     ctx.globalAlpha = 1;
 
@@ -89,19 +117,59 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
       const angle = game.player.angle - FOV / 2 + cameraX * FOV;
       const hit = mapSystem.castRay(game.player, angle);
       const corrected = Math.max(0.0001, hit.dist * Math.cos(angle - game.player.angle));
-      const wallHeight = Math.min(h * 1.6, h / (corrected * 0.72));
+      const wallHeight = Math.min(h * 1.22, h / (corrected * 0.72));
       const x = i * (w / rays);
       const y = horizon - wallHeight * 0.5;
       depths[i] = corrected;
 
-      ctx.fillStyle = wallColor(hit, corrected);
-      ctx.fillRect(x, y, strip, wallHeight);
+      if (!drawWallTexture(hit, x, y, strip, wallHeight, corrected)) {
+        ctx.fillStyle = wallColor(hit, corrected);
+        ctx.fillRect(x, y, strip, wallHeight);
+      }
 
       if (Math.floor(hit.wallX * 18) === 0) {
         ctx.fillStyle = "rgba(15, 12, 10, 0.32)";
         ctx.fillRect(x, y, strip, wallHeight);
       }
     }
+  }
+
+  function textureCell(index) {
+    if (!textureSheet.complete || !textureSheet.naturalWidth) return null;
+    const cols = 3;
+    const rows = 2;
+    const cellW = textureSheet.naturalWidth / cols;
+    const cellH = textureSheet.naturalHeight / rows;
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    const insetX = Math.floor(cellW * 0.18);
+    const insetY = Math.floor(cellH * 0.18);
+    return {
+      x: Math.floor(col * cellW + insetX),
+      y: Math.floor(row * cellH + insetY),
+      w: Math.floor(cellW - insetX * 2),
+      h: Math.floor(cellH - insetY * 2),
+    };
+  }
+
+  function wallTextureIndex(hit) {
+    if (hit.tile === COUNTER) return 5;
+    return (hit.mapX + hit.mapY) % 4 === 0 ? 1 : 0;
+  }
+
+  function drawWallTexture(hit, x, y, width, height, dist) {
+    const cell = textureCell(wallTextureIndex(hit));
+    if (!cell) return false;
+    const sourceX = cell.x + clamp(Math.floor(hit.wallX * (cell.w - 1)), 1, cell.w - 2);
+    const shade = clamp(1.16 - dist / 25, 0.42, 1);
+    ctx.drawImage(textureSheet, sourceX, cell.y + 1, 1, cell.h - 2, x - 0.5, y, width + 1.5, height);
+    ctx.fillStyle = `rgba(0, 0, 0, ${1 - shade})`;
+    ctx.fillRect(x, y, width, height);
+    if (hit.side === 1) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+      ctx.fillRect(x, y, width, height);
+    }
+    return true;
   }
 
   function projectWorldPoint(x, y, heightScale = 1) {
@@ -286,6 +354,11 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     const sway = Math.sin(zombie.sway) * s * 0.035;
     const hit = zombie.hitFlash > 0;
 
+    if (drawZombieSprite(projected, zombie, shade, hit)) {
+      drawZombieHealthBar(x, top, width, s, zombie);
+      return;
+    }
+
     ctx.save();
     ctx.globalAlpha = shade;
     ctx.fillStyle = "rgba(0, 0, 0, 0.34)";
@@ -325,13 +398,62 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     ctx.arc(x + s * 0.038 + sway, top + s * 0.19, Math.max(1, s * 0.014), 0, TAU);
     ctx.fill();
 
+    drawZombieHealthBar(x, top, width, s, zombie);
+    ctx.restore();
+  }
+
+  function drawZombieSprite(projected, zombie, shade, hit) {
+    const sheet = zombieSheetCanvas;
+    if (!sheet || !sheet.width) return false;
+    const rect = zombieSpriteRect(zombie.typeId);
+    const sx = rect.x;
+    const sy = rect.y;
+    const sw = rect.w;
+    const sh = rect.h;
+    const visual = zombieVisualScale(zombie.typeId);
+    const drawH = projected.size * visual.h;
+    const drawW = drawH * (sw / sh) * visual.w;
+    const dx = projected.screenX - drawW / 2 + Math.sin(zombie.sway) * projected.size * 0.025;
+    const dy = projected.bottom - drawH;
+
+    ctx.save();
+    ctx.globalAlpha = shade;
+    ctx.drawImage(sheet, sx, sy, sw, sh, dx, dy, drawW, drawH);
+    if (hit) {
+      ctx.globalCompositeOperation = "source-atop";
+      ctx.fillStyle = "rgba(255, 238, 210, 0.72)";
+      ctx.fillRect(dx, dy, drawW, drawH);
+    }
+    ctx.restore();
+    return true;
+  }
+
+  function zombieSpriteRect(typeId) {
+    const rects = {
+      walker: { x: 42, y: 96, w: 402, h: 663 },
+      runner: { x: 483, y: 115, w: 342, h: 649 },
+      brute: { x: 870, y: 9, w: 614, h: 763 },
+      stalker: { x: 1504, y: 63, w: 431, h: 702 },
+    };
+    return rects[typeId] || rects.walker;
+  }
+
+  function zombieVisualScale(typeId) {
+    if (typeId === "runner") return { w: 0.88, h: 0.86 };
+    if (typeId === "brute") return { w: 1.08, h: 1.12 };
+    if (typeId === "stalker") return { w: 0.94, h: 0.95 };
+    return { w: 0.95, h: 0.92 };
+  }
+
+  function drawZombieHealthBar(x, top, width, size, zombie) {
     const barW = width * 1.05;
     const hp = clamp(zombie.health / zombie.maxHealth, 0, 1);
+    ctx.save();
     ctx.globalAlpha = 0.86;
     ctx.fillStyle = "rgba(0, 0, 0, 0.52)";
-    ctx.fillRect(x - barW / 2, top + s * 0.04, barW, Math.max(3, s * 0.025));
+    ctx.fillRect(x - barW / 2, top + size * 0.04, barW, Math.max(3, size * 0.025));
     ctx.fillStyle = "#bf3035";
-    ctx.fillRect(x - barW / 2, top + s * 0.04, barW * hp, Math.max(3, s * 0.025));
+    ctx.fillRect(x - barW / 2, top + size * 0.04, barW * hp, Math.max(3, size * 0.025));
     ctx.restore();
   }
 
@@ -344,8 +466,10 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     const y = h * 0.82 + kick;
     const scale = clamp(w / 1200, 0.75, 1.25) * view.dpr;
     ctx.save();
-    drawHands(x, y, scale, weapon);
-    if (!drawWeaponSprite(x, y, scale, weapon)) drawWeaponShape(x, y, scale, weapon);
+    if (!drawWeaponSprite(x, y, scale, weapon)) {
+      drawHands(x, y, scale, weapon);
+      drawWeaponShape(x, y, scale, weapon);
+    }
     drawWeaponLabel(x, y, scale, weapon);
 
     if (game.state.muzzleFlash > 0) {
