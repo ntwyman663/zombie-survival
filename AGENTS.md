@@ -2,16 +2,19 @@
 
 ## Project Overview
 
-This project is a vanilla browser-based canvas FPS called **Haunt House: Dead Rounds**. It uses hand-written JavaScript, HTML, and CSS with no build step or package manager.
+This project is a vanilla browser-based canvas FPS called **Haunted House: Survival**. It uses hand-written JavaScript, HTML, and CSS with no build step or package manager.
 
 The game currently includes:
 
 - A raycast-style first-person renderer on a 2D canvas.
 - A generated haunted-house map with a shop area.
 - Round-based zombie spawning and scaling.
-- Weapon buying/equipping, reloads, ammo, points, and HUD state.
+- Zombie A* pathfinding, doorway navigation, crowding, and multiple zombie types.
+- Weapon buying/equipping, reloads, magazine/reserve ammo, ammo drops, points, and HUD state.
+- Hitscan weapons plus a rocket launcher with projectile and splash explosion behavior.
 - Pointer lock mouse look with keyboard fallback.
-- Simple procedural Web Audio effects.
+- Procedural Web Audio sound effects and background chiptune music.
+- Pixel-art weapon, zombie, and environment texture assets in `assets/`.
 
 ## Running Locally
 
@@ -45,6 +48,9 @@ python3 -m http.server 8080
 - Keep DOM/HUD work in `src/ui.js`.
 - Keep input handling in `src/input.js`.
 - Keep procedural audio in `src/audio.js`.
+- Keep A* and tile-level map helpers in `src/map.js`.
+- Keep projectile, explosion, zombie, ammo-drop, and round behavior in `src/simulation.js`.
+- Keep generated project assets under `assets/`; do not reference files from `$CODEX_HOME/generated_images`.
 - Use ASCII in source files unless an existing file already needs non-ASCII text.
 - Do not rewrite unrelated UI styling or rebalance gameplay as part of refactors.
 
@@ -56,16 +62,21 @@ After gameplay, rendering, input, or module changes, verify in a browser through
 - Pointer lock works from `http://localhost`.
 - `file://` still falls back to arrow-key turning.
 - WASD movement, arrow turning, mouse look, shooting, reload, and weapon hotkeys work.
-- Zombies spawn, chase, attack, take damage, die, and complete rounds.
+- Zombies spawn, path through doorways, crowd without stacking, attack, take damage, die, and complete rounds.
+- Runner/brute/stalker variants appear in later rounds and remain visually readable.
+- SMG hold-to-fire works while single-shot weapons still click once.
+- Rocket projectile impacts walls/zombies and applies splash damage.
+- Ammo pickups add reserve ammo and reload consumes reserve ammo.
 - Shop opens near the shop area, closes, buys, and equips weapons.
 - HUD health, ammo/reload, points, zombies, messages, and round state update.
-- Minimap, weapon view, sprites, damage vignette, and game-over overlay render.
+- Player-forward minimap, weapon view, sprites, damage vignette, and game-over overlay render.
+- Pixel-art weapon and zombie sheets load; canvas fallbacks remain usable if an asset fails.
+- `debug-zombies.html` can be used to inspect or tune zombie sprite crop rectangles.
 - Browser console has no errors.
 
 ## Near-Term Roadmap
 
-1. Foundation/docs/module split.
-2. Pause/settings overlay with mouse sensitivity, volume, and minimap toggle.
-3. More wave variety: special zombies, spawn warnings, and clearer inter-round downtime.
-4. Progression systems: weapon upgrades, perks, and stronger point sinks.
-5. Map authoring support once the core modules are stable.
+1. Pause/settings overlay with mouse sensitivity, music/effects volume, and minimap toggle.
+2. Progression systems: weapon upgrades, perks, and stronger point sinks.
+3. More authored map variety and encounter pacing.
+4. Map authoring support once the core modules are stable.
