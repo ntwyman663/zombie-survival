@@ -1,4 +1,4 @@
-import { SHOP_CENTER, clamp, spawnPoints, weapons } from "./config.js";
+import { SHOP_CENTER, clamp, spawnPoints, weapons, zombieTypes } from "./config.js";
 import { createPlayer, newRunState } from "./state.js";
 
 export function createSimulation({ canvas, ui, mapSystem, audio }) {
@@ -8,8 +8,12 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     player: createPlayer(),
     state: newRunState("menu"),
     zombies: [],
+    ammoDrops: [],
+    projectiles: [],
+    explosions: [],
     particles: [],
     keys: new Set(),
+    isFiring: false,
     nearShop: false,
     pointerLockBlocked: false,
     currentWeapon,
@@ -43,6 +47,9 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     game.player = createPlayer();
     game.state = newRunState("playing");
     game.zombies = [];
+    game.ammoDrops = [];
+    game.projectiles = [];
+    game.explosions = [];
     game.particles = [];
     startRound();
     ui.menuOverlay.classList.remove("active");
@@ -70,9 +77,14 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
   }
 
   function spawnZombie() {
-    let best = spawnPoints[0];
+    const type = chooseZombieType(game.state.round);
+    const zombieRadius = type.radius;
+    let best = null;
+    let fallback = null;
     let bestScore = -Infinity;
     spawnPoints.forEach((point) => {
+      if (!mapSystem.canStandAt(point.x, point.y, zombieRadius)) return;
+      fallback = fallback || point;
       const away = Math.hypot(point.x - game.player.x, point.y - game.player.y);
       const score = away + rnd() * 5;
       if (away > 7 && score > bestScore) {
@@ -81,22 +93,55 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
       }
     });
 
+    best = best || fallback;
+    if (!best) return;
+
+    let x = best.x;
+    let y = best.y;
+    for (let i = 0; i < 8; i += 1) {
+      const jitterX = (rnd() - 0.5) * 0.7;
+      const jitterY = (rnd() - 0.5) * 0.7;
+      if (mapSystem.canStandAt(best.x + jitterX, best.y + jitterY, zombieRadius)) {
+        x = best.x + jitterX;
+        y = best.y + jitterY;
+        break;
+      }
+    }
+
     const round = game.state.round;
     game.zombies.push({
-      x: best.x + (rnd() - 0.5) * 0.7,
-      y: best.y + (rnd() - 0.5) * 0.7,
-      radius: 0.29,
-      health: 42 + round * 16,
-      maxHealth: 42 + round * 16,
-      speed: 0.82 + Math.min(0.72, round * 0.055),
-      damage: 8 + Math.floor(round * 1.7),
+      type,
+      typeId: type.id,
+      x,
+      y,
+      radius: zombieRadius,
+      health: type.health + round * type.healthPerRound,
+      maxHealth: type.health + round * type.healthPerRound,
+      speed: type.speed + Math.min(type.maxSpeedBonus, round * type.speedPerRound),
+      damage: type.damage + Math.floor(round * type.damagePerRound),
       attackCooldown: 0.8 + rnd() * 0.4,
+      path: [],
+      pathTimer: 0,
+      targetTile: "",
+      pathOffset: (rnd() - 0.5) * 0.72,
+      repathBase: 0.35 + rnd() * 0.45,
       stagger: 0,
       hitFlash: 0,
       sway: rnd() * Math.PI * 2,
-      points: 95 + round * 12,
+      points: type.points + round * type.pointsPerRound,
       dead: false,
     });
+  }
+
+  function chooseZombieType(round) {
+    const available = zombieTypes.filter((type) => round >= type.round);
+    const total = available.reduce((sum, type) => sum + type.weight + Math.max(0, round - type.round) * 0.035, 0);
+    let roll = rnd() * total;
+    for (const type of available) {
+      roll -= type.weight + Math.max(0, round - type.round) * 0.035;
+      if (roll <= 0) return type;
+    }
+    return available[0] || zombieTypes[0];
   }
 
   function updateRound(dt) {
@@ -153,19 +198,26 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     game.state.muzzleFlash = Math.max(0, game.state.muzzleFlash - dt * 4.2);
     game.state.screenKick = Math.max(0, game.state.screenKick - dt * 7);
 
+    if (game.isFiring && currentWeapon().automatic) shoot();
+
     if (game.state.reloading > 0) {
       game.state.reloading -= dt;
       if (game.state.reloading <= 0) {
         game.state.reloading = 0;
         const weapon = currentWeapon();
-        game.state.ammo[weapon.id] = weapon.mag;
+        const ammo = game.state.ammo[weapon.id];
+        const needed = weapon.mag - ammo.mag;
+        const moved = Math.min(needed, ammo.reserve);
+        ammo.mag += moved;
+        ammo.reserve -= moved;
         setMessage(`${weapon.name} ready`, 1.2);
       }
     }
   }
 
   function updateZombies(dt) {
-    for (const zombie of game.zombies) {
+    for (let index = 0; index < game.zombies.length; index += 1) {
+      const zombie = game.zombies[index];
       zombie.attackCooldown = Math.max(0, zombie.attackCooldown - dt);
       zombie.stagger = Math.max(0, zombie.stagger - dt);
       zombie.hitFlash = Math.max(0, zombie.hitFlash - dt);
@@ -187,9 +239,36 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
         continue;
       }
 
+      refreshZombiePath(zombie, dt);
+      const baseWaypoint = zombie.path[0] || game.player;
+      const waypoint = offsetWaypoint(zombie, baseWaypoint);
+      const tx = waypoint.x - zombie.x;
+      const ty = waypoint.y - zombie.y;
+      const waypointDist = Math.hypot(tx, ty);
+      if (zombie.path[0] && Math.hypot(baseWaypoint.x - zombie.x, baseWaypoint.y - zombie.y) < 0.24) {
+        zombie.path.shift();
+      }
+
       const speed = zombie.speed * (zombie.stagger > 0 ? 0.3 : 1);
-      const stepX = (dx / dist) * speed * dt;
-      const stepY = (dy / dist) * speed * dt;
+      let dirX = waypointDist > 0.001 ? tx / waypointDist : dx / dist;
+      let dirY = waypointDist > 0.001 ? ty / waypointDist : dy / dist;
+
+      for (let otherIndex = 0; otherIndex < game.zombies.length; otherIndex += 1) {
+        if (otherIndex === index) continue;
+        const other = game.zombies[otherIndex];
+        const ox = zombie.x - other.x;
+        const oy = zombie.y - other.y;
+        const overlapDist = Math.hypot(ox, oy);
+        const desired = zombie.radius + other.radius + 0.12;
+        if (overlapDist <= 0.001 || overlapDist >= desired) continue;
+        const force = (desired - overlapDist) / desired;
+        dirX += (ox / overlapDist) * force * 1.25;
+        dirY += (oy / overlapDist) * force * 1.25;
+      }
+
+      const dirLength = Math.hypot(dirX, dirY) || 1;
+      const stepX = (dirX / dirLength) * speed * dt;
+      const stepY = (dirY / dirLength) * speed * dt;
 
       if (mapSystem.canStandAt(zombie.x + stepX, zombie.y + stepY, zombie.radius)) {
         zombie.x += stepX;
@@ -199,6 +278,71 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
         mapSystem.tryMoveActor(zombie, 0, stepY, zombie.radius);
       }
     }
+  }
+
+  function refreshZombiePath(zombie, dt) {
+    zombie.pathTimer -= dt;
+    const playerTile = `${Math.floor(game.player.x)},${Math.floor(game.player.y)}`;
+    if (zombie.pathTimer > 0 && zombie.targetTile === playerTile && zombie.path.length > 0) return;
+    zombie.path = mapSystem.findPath(zombie, game.player, zombie.radius).slice(0, 10);
+    zombie.pathTimer = zombie.repathBase + rnd() * 0.35;
+    zombie.targetTile = playerTile;
+  }
+
+  function offsetWaypoint(zombie, waypoint) {
+    const next = zombie.path[1] || game.player;
+    const dx = next.x - zombie.x;
+    const dy = next.y - zombie.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 0.001) return waypoint;
+
+    const offsetX = (-dy / length) * zombie.pathOffset;
+    const offsetY = (dx / length) * zombie.pathOffset;
+    const ox = waypoint.x + offsetX;
+    const oy = waypoint.y + offsetY;
+    if (mapSystem.canStandAt(ox, oy, zombie.radius)) return { x: ox, y: oy };
+    return waypoint;
+  }
+
+  function updateProjectiles(dt) {
+    game.projectiles = game.projectiles.filter((projectile) => {
+      projectile.life -= dt;
+      const nextX = projectile.x + projectile.vx * dt;
+      const nextY = projectile.y + projectile.vy * dt;
+      if (projectile.life <= 0 || !mapSystem.canStandAt(nextX, nextY, 0.12)) {
+        explode(projectile.x, projectile.y, projectile.weapon);
+        return false;
+      }
+
+      projectile.x = nextX;
+      projectile.y = nextY;
+      const hit = game.zombies.find((zombie) => Math.hypot(zombie.x - projectile.x, zombie.y - projectile.y) < zombie.radius + 0.16);
+      if (hit) {
+        explode(projectile.x, projectile.y, projectile.weapon);
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  function explode(x, y, weapon) {
+    game.explosions.push({ type: "explosion", x, y, radius: weapon.splashRadius, life: 0.45, maxLife: 0.45 });
+    game.state.screenKick = Math.max(game.state.screenKick, 0.65);
+    audio.playTone(70, 0.14, 0.12, "sawtooth");
+    game.zombies.slice().forEach((zombie) => {
+      const dist = Math.hypot(zombie.x - x, zombie.y - y);
+      if (dist > weapon.splashRadius) return;
+      const amount = weapon.splashDamage * clamp(1 - dist / weapon.splashRadius, 0.25, 1);
+      damageZombie(zombie, amount);
+    });
+  }
+
+  function updateExplosions(dt) {
+    game.explosions = game.explosions.filter((explosion) => {
+      explosion.life -= dt;
+      return explosion.life > 0;
+    });
   }
 
   function updateParticles(dt) {
@@ -225,8 +369,12 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
       updateWeapons(dt);
       updateRound(dt);
       updateZombies(dt);
+      updateAmmoDrops();
+      updateProjectiles(dt);
+      updateExplosions(dt);
       updateParticles(dt);
     } else {
+      updateExplosions(dt);
       updateParticles(dt);
     }
 
@@ -236,7 +384,12 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
   function beginReload() {
     if (game.state.mode !== "playing" || game.state.reloading > 0) return;
     const weapon = currentWeapon();
-    if (game.state.ammo[weapon.id] >= weapon.mag) return;
+    const ammo = game.state.ammo[weapon.id];
+    if (ammo.mag >= weapon.mag) return;
+    if (ammo.reserve <= 0) {
+      setMessage(`${weapon.name} out of reserve ammo`, 1.4);
+      return;
+    }
     game.state.reloading = weapon.reload;
     setMessage(`Reloading ${weapon.name}`, weapon.reload);
   }
@@ -267,16 +420,31 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
   function shoot() {
     if (game.state.mode !== "playing" || game.state.reloading > 0 || game.state.fireCooldown > 0) return;
     const weapon = currentWeapon();
-    if (game.state.ammo[weapon.id] <= 0) {
+    const ammo = game.state.ammo[weapon.id];
+    if (ammo.mag <= 0) {
       beginReload();
       return;
     }
 
-    game.state.ammo[weapon.id] -= 1;
+    ammo.mag -= 1;
     game.state.fireCooldown = weapon.rate;
     game.state.muzzleFlash = 1;
     game.state.screenKick = Math.max(game.state.screenKick, 0.32);
     audio.playShot(weapon);
+
+    if (weapon.id === "rocket") {
+      game.projectiles.push({
+        type: "rocket",
+        weapon,
+        x: game.player.x + Math.cos(game.player.angle) * 0.5,
+        y: game.player.y + Math.sin(game.player.angle) * 0.5,
+        vx: Math.cos(game.player.angle) * weapon.rocketSpeed,
+        vy: Math.sin(game.player.angle) * weapon.rocketSpeed,
+        life: weapon.range / weapon.rocketSpeed,
+      });
+      if (ammo.mag <= 0) beginReload();
+      return;
+    }
 
     let hitAny = false;
     for (let i = 0; i < weapon.pellets; i += 1) {
@@ -289,7 +457,7 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     }
 
     if (hitAny) setMessage("Hit", 0.5);
-    if (game.state.ammo[weapon.id] <= 0) beginReload();
+    if (ammo.mag <= 0) beginReload();
   }
 
   function damageZombie(zombie, amount) {
@@ -330,7 +498,44 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
       });
     }
 
+    maybeDropAmmo(zombie);
     game.zombies = game.zombies.filter((item) => item !== zombie);
+  }
+
+  function maybeDropAmmo(zombie) {
+    if (rnd() > 0.35) return;
+    game.ammoDrops.push({
+      type: "ammo",
+      x: zombie.x,
+      y: zombie.y,
+      radius: 0.36,
+      pulse: rnd() * Math.PI * 2,
+    });
+  }
+
+  function updateAmmoDrops() {
+    game.ammoDrops = game.ammoDrops.filter((drop) => {
+      drop.pulse += 0.08;
+      if (Math.hypot(game.player.x - drop.x, game.player.y - drop.y) > drop.radius + game.player.radius) {
+        return true;
+      }
+
+      const weapon = currentWeapon();
+      const ammo = game.state.ammo[weapon.id];
+      const currentReserve = ammo.reserve;
+      const gain = weapon.ammoPickup;
+      const nextReserve = Math.min(weapon.maxReserve, currentReserve + gain);
+      if (nextReserve === currentReserve) {
+        setMessage(`${weapon.name} reserve full`, 1.1);
+        return false;
+      }
+
+      const added = nextReserve - currentReserve;
+      ammo.reserve = nextReserve;
+      setMessage(`+${added} ${weapon.name} reserve`, 1.3);
+      audio.playTone(680, 0.05, 0.045, "triangle");
+      return false;
+    });
   }
 
   function equipWeapon(index) {
@@ -360,7 +565,7 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
 
     game.state.points -= weapon.cost;
     game.state.owned.add(id);
-    game.state.ammo[id] = weapon.mag;
+    game.state.ammo[id] = { mag: weapon.mag, reserve: weapon.reserve };
     equipWeapon(index);
     audio.playTone(520, 0.05, 0.06, "triangle");
     ui.renderShop(game);
@@ -385,6 +590,7 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     if (game.state.mode === "gameover") return;
     game.state.mode = "gameover";
     if (document.pointerLockElement === canvas) document.exitPointerLock();
+    audio.stopMusic();
     ui.gameOverStats.textContent = `Round ${game.state.round}. Kills ${game.state.kills}. Points ${game.state.points}.`;
     ui.gameOverOverlay.classList.add("active");
     setMessage("Game over", 3);

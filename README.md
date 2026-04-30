@@ -6,7 +6,7 @@ A vanilla JavaScript haunted-house zombie FPS prototype rendered on a 2D canvas.
 
 - First-person raycast-style rendering.
 - Round-based zombie survival.
-- Pistol, shotgun, SMG, rifle, and hand cannon.
+- Pistol, shotgun, SMG, rifle, hand cannon, and rocket launcher.
 - Points, weapon shop, reloads, health, ammo, minimap, and game-over flow.
 - Pointer lock mouse look with keyboard fallback.
 - Procedural sound effects through Web Audio.
@@ -33,7 +33,7 @@ http://localhost:8000
 - `Click`: Shoot
 - `R`: Reload
 - `E`: Open shop when nearby
-- `1`-`5`: Equip owned weapons
+- `1`-`6`: Equip owned weapons
 - `Shift`: Sprint
 - `Enter`: Start or restart
 - `Escape`: Close shop

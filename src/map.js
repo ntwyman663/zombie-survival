@@ -84,6 +84,8 @@ export function buildMap() {
 }
 
 export function createMapSystem(map) {
+  const pathCache = new Map();
+
   function tileAt(x, y) {
     const ix = Math.floor(x);
     const iy = Math.floor(y);
@@ -106,6 +108,104 @@ export function createMapSystem(map) {
       !isSolidAt(x - radius, y + radius) &&
       !isSolidAt(x + radius, y + radius)
     );
+  }
+
+  function tileCenter(tile) {
+    return { x: tile.x + 0.5, y: tile.y + 0.5 };
+  }
+
+  function tileKey(x, y) {
+    return `${x},${y}`;
+  }
+
+  function parseTileKey(key) {
+    const [x, y] = key.split(",").map(Number);
+    return { x, y };
+  }
+
+  function isWalkableTile(x, y, radius = 0.29) {
+    if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
+    if (isSolidTile(map[y][x])) return false;
+    return canStandAt(x + 0.5, y + 0.5, radius);
+  }
+
+  function findNearestWalkableTile(x, y, radius = 0.29) {
+    const startX = Math.floor(x);
+    const startY = Math.floor(y);
+    if (isWalkableTile(startX, startY, radius)) return { x: startX, y: startY };
+
+    for (let r = 1; r <= 4; r += 1) {
+      for (let yy = startY - r; yy <= startY + r; yy += 1) {
+        for (let xx = startX - r; xx <= startX + r; xx += 1) {
+          if (Math.abs(xx - startX) !== r && Math.abs(yy - startY) !== r) continue;
+          if (isWalkableTile(xx, yy, radius)) return { x: xx, y: yy };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function findPath(start, goal, radius = 0.29) {
+    const startTile = findNearestWalkableTile(start.x, start.y, radius);
+    const goalTile = findNearestWalkableTile(goal.x, goal.y, radius);
+    if (!startTile || !goalTile) return [];
+
+    const cacheKey = `${tileKey(startTile.x, startTile.y)}>${tileKey(goalTile.x, goalTile.y)}:${radius}`;
+    if (pathCache.has(cacheKey)) return pathCache.get(cacheKey).map((point) => ({ ...point }));
+
+    const open = [{ ...startTile, g: 0, f: Math.abs(goalTile.x - startTile.x) + Math.abs(goalTile.y - startTile.y) }];
+    const cameFrom = new Map();
+    const gScore = new Map([[tileKey(startTile.x, startTile.y), 0]]);
+    const closed = new Set();
+    const neighbors = [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 },
+    ];
+
+    while (open.length > 0) {
+      open.sort((a, b) => a.f - b.f);
+      const current = open.shift();
+      const currentKey = tileKey(current.x, current.y);
+      if (current.x === goalTile.x && current.y === goalTile.y) {
+        const path = [];
+        let key = currentKey;
+        while (cameFrom.has(key)) {
+          path.push(tileCenter(parseTileKey(key)));
+          key = cameFrom.get(key);
+        }
+        path.reverse();
+        pathCache.set(cacheKey, path);
+        if (pathCache.size > 160) pathCache.clear();
+        return path.map((point) => ({ ...point }));
+      }
+
+      closed.add(currentKey);
+      neighbors.forEach((dir) => {
+        const nx = current.x + dir.x;
+        const ny = current.y + dir.y;
+        const nextKey = tileKey(nx, ny);
+        if (closed.has(nextKey) || !isWalkableTile(nx, ny, radius)) return;
+
+        const tentative = gScore.get(currentKey) + 1;
+        if (tentative >= (gScore.get(nextKey) ?? Infinity)) return;
+
+        cameFrom.set(nextKey, currentKey);
+        gScore.set(nextKey, tentative);
+        const h = Math.abs(goalTile.x - nx) + Math.abs(goalTile.y - ny);
+        const existing = open.find((item) => item.x === nx && item.y === ny);
+        if (existing) {
+          existing.g = tentative;
+          existing.f = tentative + h;
+        } else {
+          open.push({ x: nx, y: ny, g: tentative, f: tentative + h });
+        }
+      });
+    }
+
+    return [];
   }
 
   function tryMoveActor(actor, dx, dy, radius) {
@@ -170,5 +270,15 @@ export function createMapSystem(map) {
     return { dist, side, tile, wallX, mapX, mapY };
   }
 
-  return { map, tileAt, isSolidTile, canStandAt, tryMoveActor, castRay };
+  return {
+    map,
+    tileAt,
+    isSolidTile,
+    canStandAt,
+    tryMoveActor,
+    castRay,
+    isWalkableTile,
+    findNearestWalkableTile,
+    findPath,
+  };
 }

@@ -30,6 +30,7 @@ export function bindInput({ canvas, ui, game, audio }) {
 
   function startOrRestart() {
     audio.ensureAudio();
+    audio.startMusic();
     game.initializeRun();
     requestGamePointerLock();
   }
@@ -83,12 +84,28 @@ export function bindInput({ canvas, ui, game, audio }) {
 
   window.addEventListener("blur", () => {
     game.keys = new Set();
+    game.isFiring = false;
   });
 
   document.addEventListener("mousemove", (event) => {
     if (document.pointerLockElement === canvas && game.state.mode === "playing") {
       game.player.angle += event.movementX * 0.00225;
     }
+  });
+
+  canvas.addEventListener("mousedown", (event) => {
+    if (event.button !== 0 || game.state.mode !== "playing") return;
+    game.isFiring = true;
+    audio.ensureAudio();
+    if (document.pointerLockElement !== canvas) {
+      requestGamePointerLock(true);
+      return;
+    }
+    game.shoot();
+  });
+
+  window.addEventListener("mouseup", (event) => {
+    if (event.button === 0) game.isFiring = false;
   });
 
   canvas.addEventListener("click", () => {
@@ -98,7 +115,7 @@ export function bindInput({ canvas, ui, game, audio }) {
       requestGamePointerLock(true);
       return;
     }
-    game.shoot();
+    if (!game.currentWeapon().automatic) game.shoot();
   });
 
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());

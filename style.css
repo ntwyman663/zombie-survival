@@ -9,7 +9,7 @@
   --amber: #d49a32;
   --moss: #576a45;
   --steel: #8fa1a8;
-  --panel: rgba(15, 14, 13, 0.78);
+  --panel: rgba(22, 19, 16, 0.7);
 }
 
 * {
@@ -22,7 +22,7 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #070706;
+  background: #14100d;
 }
 
 button {
@@ -57,7 +57,7 @@ button.ghost {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #050505;
+  background: #17120f;
 }
 
 #gameCanvas {
@@ -94,7 +94,7 @@ button.ghost {
 .meter {
   border: 1px solid rgba(232, 223, 201, 0.15);
   border-radius: 6px;
-  background: rgba(8, 7, 6, 0.62);
+  background: rgba(18, 15, 12, 0.66);
   backdrop-filter: blur(10px);
 }
 
@@ -179,8 +179,8 @@ button.ghost {
   left: 50%;
   top: 50%;
   border-radius: 999px;
-  background: rgba(232, 223, 201, 0.88);
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+  background: rgba(255, 244, 214, 0.96);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
   transform: translate(-50%, -50%);
 }
 
@@ -219,8 +219,8 @@ button.ghost {
   padding: 24px;
   color: var(--paper);
   background:
-    linear-gradient(180deg, rgba(4, 4, 4, 0.24), rgba(4, 4, 4, 0.7)),
-    radial-gradient(circle at 50% 42%, rgba(90, 23, 23, 0.34), transparent 50%);
+    linear-gradient(180deg, rgba(12, 10, 8, 0.12), rgba(12, 10, 8, 0.48)),
+    radial-gradient(circle at 50% 42%, rgba(133, 56, 33, 0.28), transparent 52%);
 }
 
 .overlay.active {
@@ -297,13 +297,111 @@ h2 {
 
 .weapon-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   border: 1px solid rgba(232, 223, 201, 0.13);
   border-radius: 8px;
   padding: 14px;
   background: rgba(232, 223, 201, 0.07);
+}
+
+.weapon-thumb {
+  position: relative;
+  width: 96px;
+  height: 54px;
+  overflow: hidden;
+  border: 1px solid rgba(232, 223, 201, 0.14);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 70% 30%, rgba(214, 166, 78, 0.28), transparent 34%),
+    rgba(7, 7, 6, 0.36);
+}
+
+.weapon-thumb {
+  background-image: url("assets/weapons/weapon-sheet.png");
+  background-size: 300% 200%;
+  background-position: 0 0;
+}
+
+.weapon-thumb.shotgun {
+  background-position: 50% 0;
+}
+
+.weapon-thumb.smg {
+  background-position: 100% 0;
+}
+
+.weapon-thumb.rifle {
+  background-position: 0 100%;
+}
+
+.weapon-thumb.cannon {
+  background-position: 50% 100%;
+}
+
+.weapon-thumb.rocket {
+  background-position: 100% 100%;
+}
+
+.weapon-thumb::before,
+.weapon-thumb::after {
+  content: "";
+  position: absolute;
+  border-radius: 4px;
+}
+
+.weapon-thumb::before {
+  left: 16px;
+  top: 22px;
+  width: 62px;
+  height: 12px;
+  background: #2d3030;
+  box-shadow: 16px -10px 0 -3px #4d5250;
+}
+
+.weapon-thumb::after {
+  left: 26px;
+  top: 31px;
+  width: 17px;
+  height: 21px;
+  background: #7b5036;
+  transform: skew(-12deg);
+}
+
+.weapon-thumb.shotgun::before,
+.weapon-thumb.rifle::before,
+.weapon-thumb.rocket::before {
+  left: 5px;
+  width: 84px;
+}
+
+.weapon-thumb.smg::after {
+  left: 43px;
+  height: 25px;
+  background: #b1843a;
+}
+
+.weapon-thumb.cannon::before {
+  width: 72px;
+  height: 18px;
+  border-radius: 8px;
+}
+
+.weapon-thumb.rocket::before {
+  height: 18px;
+  background: #4b4f48;
+  box-shadow: 58px -1px 0 -4px #b98b3c;
+}
+
+.weapon-thumb.rocket::after {
+  left: 8px;
+  top: 18px;
+  width: 18px;
+  height: 20px;
+  border-radius: 50%;
+  background: #232726;
+  transform: none;
 }
 
 .weapon-row h3 {

@@ -31,10 +31,13 @@ export function createUi() {
       row.className = `weapon-row${current ? " current" : ""}`;
 
       const info = document.createElement("div");
+      const thumb = document.createElement("div");
+      thumb.className = `weapon-thumb ${weapon.id}`;
+      thumb.setAttribute("aria-hidden", "true");
       const title = document.createElement("h3");
       title.textContent = weapon.name;
       const profile = document.createElement("p");
-      profile.textContent = `${weapon.profile}. Damage ${weapon.damage}, mag ${weapon.mag}, cost ${weapon.cost}.`;
+      profile.textContent = `${weapon.profile}. Damage ${weapon.damage}, mag ${weapon.mag}, reserve ${weapon.reserve}, cost ${weapon.cost}.`;
       info.append(title, profile);
 
       const button = document.createElement("button");
@@ -42,7 +45,7 @@ export function createUi() {
       button.textContent = current ? "Equipped" : owned ? "Equip" : `Buy ${weapon.cost}`;
       button.disabled = current || (!owned && game.state.points < weapon.cost);
       button.addEventListener("click", () => game.buyOrEquipWeapon(weapon.id));
-      row.append(info, button);
+      row.append(thumb, info, button);
       ui.weaponList.append(row);
     });
   }
@@ -58,9 +61,9 @@ export function createUi() {
 
     const ammo = game.state.ammo[weapon.id];
     const reloadPct =
-      game.state.reloading > 0 ? (weapon.reload - game.state.reloading) / weapon.reload : ammo / weapon.mag;
+      game.state.reloading > 0 ? (weapon.reload - game.state.reloading) / weapon.reload : ammo.mag / weapon.mag;
     ui.ammoText.textContent =
-      game.state.reloading > 0 ? `${weapon.name} reloading` : `${weapon.name} ${ammo}/${weapon.mag}`;
+      game.state.reloading > 0 ? `${weapon.name} reloading` : `${weapon.name} ${ammo.mag}/${ammo.reserve}`;
     ui.reloadFill.style.width = `${clamp(reloadPct * 100, 0, 100)}%`;
     ui.shopHint.classList.toggle("visible", game.state.mode === "playing" && game.nearShop);
   }

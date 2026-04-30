@@ -16,7 +16,10 @@ export function createPlayer() {
 export function newRunState(mode = "menu") {
   const ammo = {};
   weapons.forEach((weapon) => {
-    ammo[weapon.id] = weapon.mag;
+    ammo[weapon.id] = {
+      mag: weapon.mag,
+      reserve: weapon.reserve,
+    };
   });
 
   return {
