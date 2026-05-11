@@ -3,6 +3,8 @@ export function createAudioSystem() {
   let musicTimer = null;
   let musicStep = 0;
   let musicGain = null;
+  let musicVolume = 0.7;
+  let effectsVolume = 1;
 
   function ensureAudio() {
     if (!audioCtx) {
@@ -14,11 +16,13 @@ export function createAudioSystem() {
 
   function playTone(frequency, duration, gainValue, type = "sine") {
     if (!audioCtx) return;
+    const volume = gainValue * effectsVolume;
+    if (volume <= 0) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = type;
     osc.frequency.value = frequency;
-    gain.gain.value = gainValue;
+    gain.gain.value = volume;
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start();
@@ -37,7 +41,7 @@ export function createAudioSystem() {
     ensureAudio();
     if (!audioCtx || musicTimer) return;
     musicGain = audioCtx.createGain();
-    musicGain.gain.value = 0.045;
+    musicGain.gain.value = 0.045 * musicVolume;
     musicGain.connect(audioCtx.destination);
     musicStep = 0;
     playMusicStep();
@@ -96,5 +100,14 @@ export function createAudioSystem() {
     musicStep += 1;
   }
 
-  return { ensureAudio, playTone, playShot, startMusic, stopMusic };
+  function setMusicVolume(value) {
+    musicVolume = Math.max(0, Math.min(1, value));
+    if (musicGain) musicGain.gain.value = 0.045 * musicVolume;
+  }
+
+  function setEffectsVolume(value) {
+    effectsVolume = Math.max(0, Math.min(1, value));
+  }
+
+  return { ensureAudio, playTone, playShot, startMusic, stopMusic, setMusicVolume, setEffectsVolume };
 }

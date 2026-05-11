@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Haunted House: Survival</title>
+    <link rel="icon" href="data:," />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -42,7 +43,73 @@
           <p class="eyebrow">Haunted FPS Survival</p>
           <h1>Haunted House: Survival</h1>
           <p class="lede">Hold the mansion, earn points, buy better weapons, and keep the dead at a distance.</p>
+          <div class="control-grid" aria-label="Game controls">
+            <span><b>Move</b> WASD</span>
+            <span><b>Look</b> Mouse / Arrows</span>
+            <span><b>Look up/down</b> Mouse / Q, Z</span>
+            <span><b>Shoot</b> Left click</span>
+            <span><b>Reload</b> R</span>
+            <span><b>Shop</b> E near counter</span>
+            <span><b>Weapons</b> 1-6</span>
+            <span><b>Sprint</b> Shift</span>
+            <span><b>Pause</b> Esc</span>
+          </div>
           <button id="startButton" type="button">Start Run</button>
+        </div>
+      </section>
+
+      <section id="pauseOverlay" class="overlay">
+        <div class="panel pause-panel">
+          <header>
+            <div>
+              <p class="eyebrow">Paused</p>
+              <h2>The house waits.</h2>
+            </div>
+          </header>
+
+          <div class="pause-layout">
+            <nav class="pause-actions" aria-label="Pause actions">
+              <button id="resumeButton" type="button">Resume</button>
+              <button id="showControlsButton" class="ghost" type="button">Controls</button>
+              <button id="showSettingsButton" class="ghost" type="button">Settings</button>
+              <button id="quitButton" class="ghost danger" type="button">Quit Run</button>
+            </nav>
+
+            <div class="pause-content">
+              <section id="pauseControlsPanel" class="pause-tab active" aria-label="Controls">
+                <div class="control-grid compact">
+                  <span><b>Move</b> WASD</span>
+                  <span><b>Turn</b> Mouse / Arrows</span>
+                  <span><b>Look up/down</b> Mouse / Q, Z</span>
+                  <span><b>Shoot</b> Left click</span>
+                  <span><b>Reload</b> R</span>
+                  <span><b>Shop</b> E</span>
+                  <span><b>Weapons</b> 1-6</span>
+                  <span><b>Sprint</b> Shift</span>
+                  <span><b>Pause</b> Esc</span>
+                </div>
+              </section>
+
+              <section id="settingsPanel" class="pause-tab" aria-label="Settings">
+                <label class="setting-row">
+                  <span>Mouse sensitivity <b id="sensitivityValue">100%</b></span>
+                  <input id="sensitivityInput" type="range" min="50" max="160" value="100" />
+                </label>
+                <label class="setting-row">
+                  <span>Music volume <b id="musicVolumeValue">70%</b></span>
+                  <input id="musicVolumeInput" type="range" min="0" max="100" value="70" />
+                </label>
+                <label class="setting-row">
+                  <span>Effects volume <b id="effectsVolumeValue">100%</b></span>
+                  <input id="effectsVolumeInput" type="range" min="0" max="100" value="100" />
+                </label>
+                <label class="toggle-row">
+                  <input id="minimapToggle" type="checkbox" checked />
+                  <span>Show minimap</span>
+                </label>
+              </section>
+            </div>
+          </div>
         </div>
       </section>
 

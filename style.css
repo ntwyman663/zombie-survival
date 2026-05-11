@@ -53,6 +53,11 @@ button.ghost {
   box-shadow: none;
 }
 
+button.danger {
+  border-color: rgba(184, 50, 50, 0.44);
+  color: #ffd9d9;
+}
+
 #gameShell {
   position: fixed;
   inset: 0;
@@ -291,6 +296,114 @@ h2 {
   line-height: 1.5;
 }
 
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 22px;
+}
+
+.control-grid span {
+  min-height: 54px;
+  border: 1px solid rgba(232, 223, 201, 0.13);
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: rgba(232, 223, 201, 0.76);
+  background: rgba(232, 223, 201, 0.07);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.control-grid b {
+  display: block;
+  margin-bottom: 4px;
+  color: #fbf2de;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+}
+
+.control-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.pause-panel {
+  width: min(780px, calc(100vw - 32px));
+}
+
+.pause-panel header {
+  margin-bottom: 18px;
+}
+
+.pause-layout {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.pause-actions {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.pause-actions button {
+  width: 100%;
+}
+
+.pause-content {
+  min-height: 228px;
+  border: 1px solid rgba(232, 223, 201, 0.13);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(232, 223, 201, 0.06);
+}
+
+.pause-tab {
+  display: none;
+}
+
+.pause-tab.active {
+  display: block;
+}
+
+.setting-row {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: rgba(232, 223, 201, 0.82);
+  font-weight: 800;
+}
+
+.setting-row span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-row b {
+  color: #d5a95f;
+}
+
+.setting-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--amber);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(232, 223, 201, 0.86);
+  font-weight: 800;
+}
+
+.toggle-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--amber);
+}
+
 .shop-panel {
   width: min(760px, calc(100vw - 32px));
   max-height: min(82vh, 780px);
@@ -417,5 +530,15 @@ h2 {
 
   .weapon-row button {
     width: 100%;
+  }
+
+  .control-grid,
+  .control-grid.compact,
+  .pause-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-panel {
+    margin-top: 0;
   }
 }

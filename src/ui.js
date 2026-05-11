@@ -21,15 +21,45 @@ export function createUi() {
     zombieText: document.getElementById("zombieText"),
     shopHint: document.getElementById("shopHint"),
     menuOverlay: document.getElementById("menuOverlay"),
+    pauseOverlay: document.getElementById("pauseOverlay"),
     shopOverlay: document.getElementById("shopOverlay"),
     gameOverOverlay: document.getElementById("gameOverOverlay"),
     gameOverStats: document.getElementById("gameOverStats"),
     startButton: document.getElementById("startButton"),
+    resumeButton: document.getElementById("resumeButton"),
+    quitButton: document.getElementById("quitButton"),
+    showControlsButton: document.getElementById("showControlsButton"),
+    showSettingsButton: document.getElementById("showSettingsButton"),
+    pauseControlsPanel: document.getElementById("pauseControlsPanel"),
+    settingsPanel: document.getElementById("settingsPanel"),
+    sensitivityInput: document.getElementById("sensitivityInput"),
+    sensitivityValue: document.getElementById("sensitivityValue"),
+    musicVolumeInput: document.getElementById("musicVolumeInput"),
+    musicVolumeValue: document.getElementById("musicVolumeValue"),
+    effectsVolumeInput: document.getElementById("effectsVolumeInput"),
+    effectsVolumeValue: document.getElementById("effectsVolumeValue"),
+    minimapToggle: document.getElementById("minimapToggle"),
     restartButton: document.getElementById("restartButton"),
     closeShopButton: document.getElementById("closeShopButton"),
     weaponList: document.getElementById("weaponList"),
     damageVignette: document.getElementById("damageVignette"),
   };
+
+  function showPauseTab(tab) {
+    const showingSettings = tab === "settings";
+    ui.pauseControlsPanel.classList.toggle("active", !showingSettings);
+    ui.settingsPanel.classList.toggle("active", showingSettings);
+  }
+
+  function syncSettings(game) {
+    ui.sensitivityInput.value = Math.round(game.settings.mouseSensitivity * 100);
+    ui.sensitivityValue.textContent = `${ui.sensitivityInput.value}%`;
+    ui.musicVolumeInput.value = Math.round(game.settings.musicVolume * 100);
+    ui.musicVolumeValue.textContent = `${ui.musicVolumeInput.value}%`;
+    ui.effectsVolumeInput.value = Math.round(game.settings.effectsVolume * 100);
+    ui.effectsVolumeValue.textContent = `${ui.effectsVolumeInput.value}%`;
+    ui.minimapToggle.checked = game.settings.showMinimap;
+  }
 
   function renderShop(game) {
     currentGame = game;
@@ -178,5 +208,5 @@ export function createUi() {
     ui.shopHint.classList.toggle("visible", game.state.mode === "playing" && game.nearShop);
   }
 
-  return { ...ui, renderShop, updateHud };
+  return { ...ui, renderShop, showPauseTab, syncSettings, updateHud };
 }

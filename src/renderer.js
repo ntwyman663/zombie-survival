@@ -720,7 +720,7 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     renderWorld(depths);
     renderSprites(depths);
     drawWeaponView();
-    drawMiniMap();
+    if (game.settings.showMinimap) drawMiniMap();
     drawLowHealth();
   }
 

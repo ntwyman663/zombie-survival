@@ -12,10 +12,17 @@ import { createPlayer, newRunState } from "./state.js";
 
 export function createSimulation({ canvas, ui, mapSystem, audio }) {
   let seed = 741337;
+  const defaultSettings = {
+    mouseSensitivity: 1,
+    musicVolume: 0.7,
+    effectsVolume: 1,
+    showMinimap: true,
+  };
 
   const game = {
     player: createPlayer(),
     state: newRunState("menu"),
+    settings: { ...defaultSettings },
     zombies: [],
     ammoDrops: [],
     projectiles: [],
@@ -28,6 +35,11 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     currentWeapon,
     setMessage,
     initializeRun,
+    pauseGame,
+    resumeGame,
+    quitRun,
+    clearInput,
+    updateSettings,
     beginReload,
     shoot,
     equipWeapon,
@@ -51,10 +63,23 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     game.state.messageTimer = seconds;
   }
 
+  function clearInput() {
+    game.keys = new Set();
+    game.isFiring = false;
+  }
+
+  function updateSettings(nextSettings) {
+    game.settings = { ...game.settings, ...nextSettings };
+    audio.setMusicVolume(game.settings.musicVolume);
+    audio.setEffectsVolume(game.settings.effectsVolume);
+    ui.syncSettings(game);
+  }
+
   function initializeRun() {
     seed = 741337;
     game.player = createPlayer();
     game.state = newRunState("playing");
+    clearInput();
     game.zombies = [];
     game.ammoDrops = [];
     game.projectiles = [];
@@ -62,9 +87,12 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     game.particles = [];
     startRound();
     ui.menuOverlay.classList.remove("active");
+    ui.pauseOverlay.classList.remove("active");
     ui.gameOverOverlay.classList.remove("active");
     ui.shopOverlay.classList.remove("active");
     ui.renderShop(game);
+    ui.showPauseTab("controls");
+    ui.syncSettings(game);
   }
 
   function startRound() {
@@ -368,8 +396,11 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
   }
 
   function update(dt) {
-    game.state.gameTime += dt;
-    game.state.messageTimer = Math.max(0, game.state.messageTimer - dt);
+    const frozen = game.state.mode === "paused" || game.state.mode === "shop";
+    if (!frozen) {
+      game.state.gameTime += dt;
+      game.state.messageTimer = Math.max(0, game.state.messageTimer - dt);
+    }
     if (game.state.messageTimer <= 0 && game.state.mode === "playing") {
       game.state.message = game.state.roundBreak > 0 ? "The halls are quiet." : "Survive the house.";
     }
@@ -386,6 +417,8 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
       updateProjectiles(dt);
       updateExplosions(dt);
       updateParticles(dt);
+    } else if (game.state.mode === "paused" || game.state.mode === "shop") {
+      game.state.damageFlash = 0;
     } else {
       updateExplosions(dt);
       updateParticles(dt);
@@ -612,6 +645,7 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
   function openShop() {
     if (game.state.mode !== "playing" || !game.nearShop) return;
     game.state.mode = "shop";
+    clearInput();
     ui.shopOverlay.classList.add("active");
     ui.renderShop(game);
     if (document.pointerLockElement === canvas) document.exitPointerLock();
@@ -620,13 +654,54 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
   function closeShop() {
     if (game.state.mode !== "shop") return;
     game.state.mode = "playing";
+    clearInput();
     ui.shopOverlay.classList.remove("active");
     canvas.focus();
+  }
+
+  function pauseGame() {
+    if (game.state.mode !== "playing") return;
+    game.state.mode = "paused";
+    clearInput();
+    ui.showPauseTab("controls");
+    ui.syncSettings(game);
+    ui.pauseOverlay.classList.add("active");
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+  }
+
+  function resumeGame() {
+    if (game.state.mode !== "paused") return;
+    game.state.mode = "playing";
+    clearInput();
+    ui.pauseOverlay.classList.remove("active");
+    canvas.focus();
+  }
+
+  function quitRun() {
+    if (game.state.mode !== "paused" && game.state.mode !== "playing" && game.state.mode !== "shop") return;
+    clearInput();
+    game.state = newRunState("menu");
+    game.player = createPlayer();
+    game.zombies = [];
+    game.ammoDrops = [];
+    game.projectiles = [];
+    game.explosions = [];
+    game.particles = [];
+    game.nearShop = false;
+    audio.stopMusic();
+    ui.pauseOverlay.classList.remove("active");
+    ui.shopOverlay.classList.remove("active");
+    ui.gameOverOverlay.classList.remove("active");
+    ui.menuOverlay.classList.add("active");
+    ui.renderShop(game);
+    ui.updateHud(game);
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
   }
 
   function endGame() {
     if (game.state.mode === "gameover") return;
     game.state.mode = "gameover";
+    clearInput();
     if (document.pointerLockElement === canvas) document.exitPointerLock();
     audio.stopMusic();
     ui.gameOverStats.textContent = `Round ${game.state.round}. Kills ${game.state.kills}. Points ${game.state.points}.`;
@@ -635,6 +710,7 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
   }
 
   ui.renderShop(game);
+  updateSettings(defaultSettings);
   ui.updateHud(game);
   return game;
 }

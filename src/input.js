@@ -37,14 +37,35 @@ export function bindInput({ canvas, ui, game, audio }) {
     requestGamePointerLock();
   }
 
+  function resumeFromPause() {
+    audio.ensureAudio();
+    game.resumeGame();
+    requestGamePointerLock();
+  }
+
+  function closeShopAndResume() {
+    game.closeShop();
+    requestGamePointerLock();
+  }
+
   function handleKeyPress(code) {
     if (code === "Enter" && (game.state.mode === "menu" || game.state.mode === "gameover")) {
       startOrRestart();
       return;
     }
 
+    if (code === "Escape" && game.state.mode === "playing") {
+      game.pauseGame();
+      return;
+    }
+
+    if (code === "Escape" && game.state.mode === "paused") {
+      resumeFromPause();
+      return;
+    }
+
     if (code === "Escape" && game.state.mode === "shop") {
-      game.closeShop();
+      closeShopAndResume();
       return;
     }
 
@@ -60,7 +81,7 @@ export function bindInput({ canvas, ui, game, audio }) {
   }
 
   window.addEventListener("keydown", (event) => {
-    const captured = [
+    const held = [
       "KeyW",
       "KeyA",
       "KeyS",
@@ -73,13 +94,17 @@ export function bindInput({ canvas, ui, game, audio }) {
       "KeyZ",
       "ShiftLeft",
       "ShiftRight",
+    ];
+    const captured = [
+      ...held,
       "KeyR",
       "KeyE",
       "Enter",
+      "Escape",
     ];
     if (captured.includes(event.code) || event.code.startsWith("Digit")) event.preventDefault();
-    game.keys.add(event.code);
     if (!event.repeat) handleKeyPress(event.code);
+    if (game.state.mode === "playing" && held.includes(event.code)) game.keys.add(event.code);
   });
 
   window.addEventListener("keyup", (event) => {
@@ -91,10 +116,18 @@ export function bindInput({ canvas, ui, game, audio }) {
     game.isFiring = false;
   });
 
+  document.addEventListener("pointerlockchange", () => {
+    if (document.pointerLockElement !== canvas) game.isFiring = false;
+  });
+
   document.addEventListener("mousemove", (event) => {
     if (document.pointerLockElement === canvas && game.state.mode === "playing") {
-      game.player.angle += event.movementX * 0.00225;
-      game.player.pitch = clamp(game.player.pitch - event.movementY * 0.0018, -PITCH_LIMIT, PITCH_LIMIT);
+      game.player.angle += event.movementX * 0.00225 * game.settings.mouseSensitivity;
+      game.player.pitch = clamp(
+        game.player.pitch - event.movementY * 0.0018 * game.settings.mouseSensitivity,
+        -PITCH_LIMIT,
+        PITCH_LIMIT,
+      );
     }
   });
 
@@ -126,5 +159,21 @@ export function bindInput({ canvas, ui, game, audio }) {
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
   ui.startButton.addEventListener("click", startOrRestart);
   ui.restartButton.addEventListener("click", startOrRestart);
-  ui.closeShopButton.addEventListener("click", game.closeShop);
+  ui.resumeButton.addEventListener("click", resumeFromPause);
+  ui.quitButton.addEventListener("click", game.quitRun);
+  ui.showControlsButton.addEventListener("click", () => ui.showPauseTab("controls"));
+  ui.showSettingsButton.addEventListener("click", () => ui.showPauseTab("settings"));
+  ui.sensitivityInput.addEventListener("input", () => {
+    game.updateSettings({ mouseSensitivity: Number(ui.sensitivityInput.value) / 100 });
+  });
+  ui.musicVolumeInput.addEventListener("input", () => {
+    game.updateSettings({ musicVolume: Number(ui.musicVolumeInput.value) / 100 });
+  });
+  ui.effectsVolumeInput.addEventListener("input", () => {
+    game.updateSettings({ effectsVolume: Number(ui.effectsVolumeInput.value) / 100 });
+  });
+  ui.minimapToggle.addEventListener("change", () => {
+    game.updateSettings({ showMinimap: ui.minimapToggle.checked });
+  });
+  ui.closeShopButton.addEventListener("click", closeShopAndResume);
 }
