@@ -1,5 +1,8 @@
 export const TAU = Math.PI * 2;
 export const FOV = (Math.PI / 180) * 68;
+export const PITCH_LIMIT = 0.42;
+export const PITCH_SCREEN_SCALE = 0.78;
+export const HEADSHOT_MULTIPLIER = 1.8;
 export const MAP_W = 41;
 export const MAP_H = 41;
 export const EMPTY = 0;

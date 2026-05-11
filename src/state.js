@@ -5,6 +5,7 @@ export function createPlayer() {
     x: PLAYER_START.x,
     y: PLAYER_START.y,
     angle: PLAYER_START.angle,
+    pitch: 0,
     health: 100,
     maxHealth: 100,
     radius: 0.22,

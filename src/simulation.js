@@ -1,4 +1,13 @@
-import { SHOP_CENTER, clamp, spawnPoints, weapons, zombieTypes } from "./config.js";
+import {
+  HEADSHOT_MULTIPLIER,
+  PITCH_LIMIT,
+  PITCH_SCREEN_SCALE,
+  SHOP_CENTER,
+  clamp,
+  spawnPoints,
+  weapons,
+  zombieTypes,
+} from "./config.js";
 import { createPlayer, newRunState } from "./state.js";
 
 export function createSimulation({ canvas, ui, mapSystem, audio }) {
@@ -127,6 +136,7 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
       repathBase: 0.35 + rnd() * 0.45,
       stagger: 0,
       hitFlash: 0,
+      headFlash: 0,
       sway: rnd() * Math.PI * 2,
       points: type.points + round * type.pointsPerRound,
       dead: false,
@@ -172,6 +182,8 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     if (game.keys.has("KeyA")) strafe -= 1;
     if (game.keys.has("ArrowLeft")) game.player.angle -= dt * 2.3;
     if (game.keys.has("ArrowRight")) game.player.angle += dt * 2.3;
+    if (game.keys.has("KeyQ")) game.player.pitch = clamp(game.player.pitch + dt * 1.2, -PITCH_LIMIT, PITCH_LIMIT);
+    if (game.keys.has("KeyZ")) game.player.pitch = clamp(game.player.pitch - dt * 1.2, -PITCH_LIMIT, PITCH_LIMIT);
 
     const magnitude = Math.hypot(forward, strafe);
     if (magnitude > 0) {
@@ -221,6 +233,7 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
       zombie.attackCooldown = Math.max(0, zombie.attackCooldown - dt);
       zombie.stagger = Math.max(0, zombie.stagger - dt);
       zombie.hitFlash = Math.max(0, zombie.hitFlash - dt);
+      zombie.headFlash = Math.max(0, zombie.headFlash - dt);
       zombie.sway += dt * 3.2;
 
       const dx = game.player.x - zombie.x;
@@ -394,6 +407,20 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     setMessage(`Reloading ${weapon.name}`, weapon.reload);
   }
 
+  function classifyVerticalHit(zombie, forward) {
+    const height = Math.max(1, canvas.height || canvas.clientHeight || window.innerHeight);
+    const horizon = height * 0.5 + game.player.pitch * height * PITCH_SCREEN_SCALE;
+    const size = height / (forward * 0.86) * 0.82;
+    const bottom = horizon + size * 0.5;
+    const top = bottom - size;
+    const aimY = height * 0.5;
+    if (aimY < top || aimY > bottom) return null;
+
+    const hitRatio = (aimY - top) / size;
+    const headLimit = zombie.typeId === "brute" ? 0.32 : 0.28;
+    return hitRatio <= headLimit ? "head" : "body";
+  }
+
   function findZombieHit(angle, range) {
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
@@ -409,12 +436,14 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
       if (forward <= 0.1 || forward > range || forward > wallDist + 0.05) continue;
       const lateral = Math.abs(dx * -dirY + dy * dirX);
       if (lateral < zombie.radius + 0.14 && forward < bestForward) {
+        const zone = classifyVerticalHit(zombie, forward);
+        if (!zone) continue;
         bestForward = forward;
-        best = zombie;
+        best = { zombie, zone };
       }
     }
 
-    return best ? { zombie: best, distance: bestForward } : null;
+    return best ? { ...best, distance: bestForward } : null;
   }
 
   function shoot() {
@@ -447,24 +476,33 @@ export function createSimulation({ canvas, ui, mapSystem, audio }) {
     }
 
     let hitAny = false;
+    let headshotAny = false;
     for (let i = 0; i < weapon.pellets; i += 1) {
       const pelletAngle = game.player.angle + (rnd() - 0.5) * weapon.spread;
       const hit = findZombieHit(pelletAngle, weapon.range);
       if (!hit) continue;
       hitAny = true;
+      headshotAny = headshotAny || hit.zone === "head";
       const falloff = clamp(1 - hit.distance / weapon.range * 0.28, 0.65, 1);
-      damageZombie(hit.zombie, weapon.damage * falloff);
+      const multiplier = hit.zone === "head" ? HEADSHOT_MULTIPLIER : 1;
+      damageZombie(hit.zombie, weapon.damage * falloff * multiplier, hit.zone);
     }
 
-    if (hitAny) setMessage("Hit", 0.5);
+    if (headshotAny) {
+      setMessage("Headshot", 0.75);
+      audio.playTone(920, 0.045, 0.04, "triangle");
+    } else if (hitAny) {
+      setMessage("Hit", 0.5);
+    }
     if (ammo.mag <= 0) beginReload();
   }
 
-  function damageZombie(zombie, amount) {
+  function damageZombie(zombie, amount, zone = "body") {
     if (zombie.dead) return;
     zombie.health -= amount;
     zombie.stagger = 0.16;
     zombie.hitFlash = 0.1;
+    zombie.headFlash = zone === "head" ? 0.18 : zombie.headFlash || 0;
 
     for (let i = 0; i < 3; i += 1) {
       game.particles.push({

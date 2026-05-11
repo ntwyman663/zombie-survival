@@ -2,6 +2,7 @@ import {
   COUNTER,
   FOV,
   MAP_W,
+  PITCH_SCREEN_SCALE,
   TAU,
   angleDiff,
   clamp,
@@ -80,7 +81,8 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
   function renderWorld(depths) {
     const { w, h } = view;
     ctx.imageSmoothingEnabled = false;
-    const horizon = h * 0.5 + Math.sin(game.player.bob) * game.state.screenKick * h * 0.01;
+    const horizon =
+      h * 0.5 + game.player.pitch * h * PITCH_SCREEN_SCALE + Math.sin(game.player.bob) * game.state.screenKick * h * 0.01;
 
     const ceiling = ctx.createLinearGradient(0, 0, 0, horizon);
     ceiling.addColorStop(0, "#161412");
@@ -182,7 +184,8 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     const focal = view.w / 2 / Math.tan(FOV / 2);
     const screenX = view.w / 2 + Math.tan(rel) * focal;
     const size = view.h / (dist * 0.86) * heightScale;
-    const bottom = view.h * 0.5 + size * 0.5;
+    const horizon = view.h * 0.5 + game.player.pitch * view.h * PITCH_SCREEN_SCALE;
+    const bottom = horizon + size * 0.5;
     return { dist, rel, screenX, size, top: bottom - size, bottom };
   }
 
@@ -353,8 +356,10 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     const shade = clamp(1.2 - projected.dist / 19, 0.46, 1);
     const sway = Math.sin(zombie.sway) * s * 0.035;
     const hit = zombie.hitFlash > 0;
+    const headHit = zombie.headFlash > 0;
 
     if (drawZombieSprite(projected, zombie, shade, hit)) {
+      if (headHit) drawHeadshotMarker(projected);
       drawZombieHealthBar(x, top, width, s, zombie);
       return;
     }
@@ -366,7 +371,7 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     ctx.ellipse(x, bottom, width * 0.85, s * 0.08, 0, 0, TAU);
     ctx.fill();
 
-    ctx.fillStyle = hit ? "#f5eddc" : zombie.type.head;
+    ctx.fillStyle = headHit ? "#ffe38a" : hit ? "#f5eddc" : zombie.type.head;
     ctx.beginPath();
     ctx.arc(x + sway, top + s * 0.2, s * 0.12, 0, TAU);
     ctx.fill();
@@ -398,6 +403,7 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     ctx.arc(x + s * 0.038 + sway, top + s * 0.19, Math.max(1, s * 0.014), 0, TAU);
     ctx.fill();
 
+    if (headHit) drawHeadshotMarker(projected);
     drawZombieHealthBar(x, top, width, s, zombie);
     ctx.restore();
   }
@@ -426,6 +432,18 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     }
     ctx.restore();
     return true;
+  }
+
+  function drawHeadshotMarker(projected) {
+    const s = projected.size;
+    ctx.save();
+    ctx.globalAlpha = 0.86;
+    ctx.strokeStyle = "#ffe38a";
+    ctx.lineWidth = Math.max(2, s * 0.018);
+    ctx.beginPath();
+    ctx.arc(projected.screenX, projected.top + s * 0.16, Math.max(5, s * 0.1), 0, TAU);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function zombieSpriteRect(typeId) {
@@ -463,7 +481,7 @@ export function createRenderer({ canvas, ctx, mapSystem, game }) {
     const bob = Math.sin(game.player.bob) * 8 * view.dpr;
     const kick = game.state.screenKick * 34 * view.dpr;
     const x = w * 0.52 + bob;
-    const y = h * 0.82 + kick;
+    const y = h * 0.82 + kick + game.player.pitch * h * 0.1;
     const scale = clamp(w / 1200, 0.75, 1.25) * view.dpr;
     ctx.save();
     if (!drawWeaponSprite(x, y, scale, weapon)) {

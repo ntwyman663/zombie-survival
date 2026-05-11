@@ -1,3 +1,5 @@
+import { PITCH_LIMIT, clamp } from "./config.js";
+
 export function bindInput({ canvas, ui, game, audio }) {
   function requestGamePointerLock(shootOnFail = false) {
     if (window.location.protocol === "file:") {
@@ -67,6 +69,8 @@ export function bindInput({ canvas, ui, game, audio }) {
       "ArrowDown",
       "ArrowLeft",
       "ArrowRight",
+      "KeyQ",
+      "KeyZ",
       "ShiftLeft",
       "ShiftRight",
       "KeyR",
@@ -90,6 +94,7 @@ export function bindInput({ canvas, ui, game, audio }) {
   document.addEventListener("mousemove", (event) => {
     if (document.pointerLockElement === canvas && game.state.mode === "playing") {
       game.player.angle += event.movementX * 0.00225;
+      game.player.pitch = clamp(game.player.pitch - event.movementY * 0.0018, -PITCH_LIMIT, PITCH_LIMIT);
     }
   });
 

@@ -38,6 +38,18 @@ If that port is busy, use another port:
 python3 -m http.server 8080
 ```
 
+## Linear Task Tracking
+
+Use Linear as the source of truth for planned and active work whenever Linear MCP access is available.
+
+- Before starting non-trivial work, check Linear for relevant existing issues, labels, projects, and status.
+- If the requested work is not already tracked, create clear Linear issues before implementation. Group related work into a project when the task spans multiple issues.
+- Keep issues small enough to complete independently, with concise acceptance criteria and useful labels such as `Feature`, `UX`, `Combat`, `Polish`, or `QA`.
+- Move issues to `In Progress` when implementation starts, and keep comments updated with meaningful progress, decisions, blockers, and verification notes.
+- When work is complete, add a final comment summarizing changes, tests/checks run, and any residual risk, then move the issue to `Done`.
+- If scope changes while working, update Linear immediately so the task list reflects reality instead of only the original request.
+- Do not close Linear issues that were not actually implemented and verified.
+
 ## Coding Conventions
 
 - Keep the project dependency-free unless the user explicitly asks to add tooling.
