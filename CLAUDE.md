@@ -1,4 +1,4 @@
-# Codex Instructions
+# Claude Instructions
 
 Follow the shared agent guide at [docs/Agent-Guide.md](docs/Agent-Guide.md).
 
